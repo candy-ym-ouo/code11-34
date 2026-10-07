@@ -198,7 +198,13 @@ itemsRouter.delete(
   asyncHandler(async (req, res) => {
     const user = currentUser(req);
     const ctx = familyCtx(req);
-    await noteService.deleteNote({ id: user.id, role: ctx.role }, ctx, req.params.itemId!, req.params.noteId!);
+    await noteService.deleteNote(
+      { id: user.id, role: ctx.role },
+      ctx,
+      req.params.itemId!,
+      req.params.noteId!,
+      clientMeta(req),
+    );
     res.status(204).end();
   }),
 );

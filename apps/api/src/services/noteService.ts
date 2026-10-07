@@ -154,12 +154,35 @@ export async function deleteNote(
   ctx: FamilyContext,
   itemId: string,
   noteId: string,
+  meta: ActorMeta,
 ) {
   const note = await prisma.itemNote.findFirst({ where: { id: noteId, itemId } });
   if (!note) throw notFound('补充内容不存在');
   const isAuthor = note.authorId === actor.id;
   const canDeleteAny = actor.role === 'owner' || actor.role === 'admin';
   if (!isAuthor && !canDeleteAny) throw forbidden('只能删除自己写的内容');
-  await prisma.itemNote.delete({ where: { id: noteId } });
+
+  // 删除与审计必须同事务落库：任何角色（含作者本人）都不能留下无痕的删除路径
+  await prisma.$transaction(async (tx) => {
+    await tx.itemNote.delete({ where: { id: noteId } });
+    await audit.record(
+      {
+        familyId: ctx.familyId,
+        actorId: actor.id,
+        action: 'note.delete',
+        targetType: 'item',
+        targetId: itemId,
+        diff: {
+          noteId,
+          type: note.type,
+          status: note.status,
+          authorId: note.authorId,
+          body: note.body,
+        } as Prisma.InputJsonValue,
+        ...meta,
+      },
+      tx,
+    );
+  });
 }
 

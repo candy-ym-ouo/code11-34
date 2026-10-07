@@ -119,6 +119,7 @@ export const AUDIT_ACTIONS = [
   'note.create',
   'note.accept',
   'note.reject',
+  'note.delete',
   'share.create',
   'share.revoke',
   'export.create',
