@@ -154,12 +154,34 @@ export async function deleteNote(
   ctx: FamilyContext,
   itemId: string,
   noteId: string,
+  meta: ActorMeta,
 ) {
+  await itemWithAccess(actor.id, ctx, itemId);
   const note = await prisma.itemNote.findFirst({ where: { id: noteId, itemId } });
   if (!note) throw notFound('补充内容不存在');
   const isAuthor = note.authorId === actor.id;
   const canDeleteAny = actor.role === 'owner' || actor.role === 'admin';
   if (!isAuthor && !canDeleteAny) throw forbidden('只能删除自己写的内容');
-  await prisma.itemNote.delete({ where: { id: noteId } });
+  // 硬删除与审计必须同事务落库：删除成功后审计行是唯一留存记录，任何角色都不能无痕删除
+  await prisma.$transaction(async (tx) => {
+    await tx.itemNote.delete({ where: { id: noteId } });
+    await audit.record(
+      {
+        familyId: ctx.familyId,
+        actorId: actor.id,
+        action: 'note.delete',
+        targetType: 'item',
+        targetId: itemId,
+        diff: {
+          noteId,
+          type: note.type,
+          authorId: note.authorId,
+          body: note.body,
+        } as Prisma.InputJsonValue,
+        ...meta,
+      },
+      tx,
+    );
+  });
 }
 

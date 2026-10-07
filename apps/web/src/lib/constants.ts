@@ -108,6 +108,7 @@ export const ACTION_LABELS: Record<string, string> = {
   'note.create': '补充内容',
   'note.accept': '采纳补充',
   'note.reject': '驳回补充',
+  'note.delete': '删除补充',
   'share.create': '创建分享链接',
   'share.revoke': '撤销分享链接',
   'export.create': '发起导出',
